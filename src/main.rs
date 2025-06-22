@@ -1,5 +1,7 @@
 mod config;
 mod handler;
+mod infrastructure;
+mod model;
 mod router;
 
 //非同期ランタイムであるtokioを用いてmain関数を非同期にする

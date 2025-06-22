@@ -1,4 +1,5 @@
 mod config;
+mod domain;
 mod handler;
 mod infrastructure;
 mod model;

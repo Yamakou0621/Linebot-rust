@@ -1,14 +1,18 @@
 use crate::domain::consumption::Consumption;
+use crate::infrastructure::firestore::add_amount;
 use crate::infrastructure::line::reply_message;
 use crate::model::line_event::LineWebhookBody;
 use axum::{body::Body, http::StatusCode, response::IntoResponse};
+use axum_macros::debug_handler;
 use http_body_util::BodyExt;
+use hyper::Request;
 use unicode_normalization::UnicodeNormalization;
 
 //post/webhookの非同期関数　requestBodyを受け取ってhttpレスポンスを返す
-pub async fn handle_line_webhook(body: Body) -> impl IntoResponse {
+#[debug_handler]
+pub async fn handle_line_webhook(req: Request<Body>) -> impl IntoResponse {
     //requestBodyを全て受け取ってcollectedオブジェクトにまとめる
-    let collected = body.collect().await.unwrap();
+    let collected = req.collect().await.unwrap();
     //バイト列を取り出す
     let bytes = collected.to_bytes();
     let body_str = String::from_utf8_lossy(&bytes);
@@ -73,11 +77,48 @@ pub async fn handle_line_webhook(body: Body) -> impl IntoResponse {
                                 total_days: 365,
                             };
                             let total = consumption.yearly_total();
-                            let message = format!(
-                                "{}を{}日に{}回買うと年間約{}円使ってますね！",
-                                item, days_str, frequency_str, total
-                            );
-                            reply_message(&event.reply_token, &message).await;
+
+                            if let Some(user_id) =
+                                event.source.user_id.as_deref()
+                            {
+                                let project_id =
+                                    std::env::var("GOOGLE_CLOUD_PROJECT")
+                                        .expect("環境変数が設定されていません");
+
+                                match add_amount(&project_id, user_id, total)
+                                    .await
+                                {
+                                    Ok(_) => {
+                                        let message = format!(
+                                            "{}を{}日に{}回買うと年間約{}円使ってますね！",
+                                            item,
+                                            days_str,
+                                            frequency_str,
+                                            total
+                                        );
+
+                                        reply_message(
+                                            &event.reply_token,
+                                            &message,
+                                        )
+                                        .await;
+                                    }
+                                    Err(e) => {
+                                        eprintln!("Firestore error: {}", e);
+                                        reply_message(
+                                            &event.reply_token,
+                                            "サーバーエラー：累計保存に失敗しました",
+                                        )
+                                        .await;
+                                    }
+                                }
+                            } else {
+                                reply_message(
+                                    &event.reply_token,
+                                    "ユーザーIDが取得できませんでした",
+                                )
+                                .await;
+                            }
                         }
                     }
                 }

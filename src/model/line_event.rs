@@ -15,6 +15,7 @@ pub struct LineWebhookBody {
 #[serde(rename_all = "camelCase")]
 //repleyTokenのためcamelcaseに変換
 pub struct LineEvent {
+    pub source: LineSource,
     pub r#type: String,
     pub reply_token: String,
     pub message: Option<LineMessage>,
@@ -26,4 +27,9 @@ pub struct LineEvent {
 #[derive(Debug, Deserialize)]
 pub struct LineMessage {
     pub text: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LineSource {
+    pub user_id: Option<String>,
 }

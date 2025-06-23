@@ -15,3 +15,6 @@ bytes = "1.5"
 hyper = "1"
 http-body-util = "0.1"
 unicode-normalization = "0.1"
+gcloud-sdk = { version = "0.27.2", features = ["google-firestore-v1"] }
+tonic = "0.13.1"
+axum-macros = "0.5"
